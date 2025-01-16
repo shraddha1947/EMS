@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Employee Management System</h1>
+
+    <!-- Add/Update Employee Form -->
+    <form id="employeeForm">
+        <input type="hidden" id="employeeId" value="">
+        <input type="text" id="employeeName" placeholder="Employee Name" required>
+        <input type="text" id="employeePosition" placeholder="Position" required>
+        <input type="number" id="employeeSalary" placeholder="Salary" required min="0">
+        <button type="submit">Save Employee</button>
+    </form>
+
+    <!-- Error/Success Message -->
+    <div id="message" class="hidden"></div>
+
+    <!-- Employee List -->
+    <h2>Employee List</h2>
+    <table id="employeeTable">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Position</th>
+            <th>Salary</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- Employee rows will go here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const employeeForm = document.getElementById('employeeForm');
+    const employeeName = document.getElementById('employeeName');
+    const employeePosition = document.getElementById('employeePosition');
+    const employeeSalary = document.getElementById('employeeSalary');
+    const employeeId = document.getElementById('employeeId');
+    const employeeTable = document.getElementById('employeeTable').getElementsByTagName('tbody')[0];
+    const messageDiv = document.getElementById('message');
+
+    function displayMessage(msg, isError = false) {
+        messageDiv.textContent = msg;
+        messageDiv.className = isError ? 'error' : 'success';
+        setTimeout(() => {
+            messageDiv.className = 'hidden';
+        }, 3000);
+    }
+
+    // Fetch employees and display them in the table
+    function fetchEmployees() {
+        fetch('http://localhost:3000/employees')
+            .then(response => response.json())
+            .then(data => {
+                let tableRows = '';
+                data.forEach(emp => {
+                    tableRows += `
+                            <tr>
+                                <td>${emp.id}</td>
+                                <td>${emp.name}</td>
+                                <td>${emp.position}</td>
+                                <td>${emp.salary}</td>
+                                <td>
+                                    <button onclick="editEmployee(${emp.id})">Edit</button>
+                                    <button onclick="deleteEmployee(${emp.id})">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                });
+                employeeTable.innerHTML = tableRows;
+            })
+            .catch(err => displayMessage('Failed to fetch employees.', true));
+    }
+
+    // Add or Update Employee
+    employeeForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const id = employeeId.value;
+        const name = employeeName.value.trim();
+        const position = employeePosition.value.trim();
+        const salary = parseFloat(employeeSalary.value);
+
+        if (!name || !position || isNaN(salary) || salary <= 0) {
+            displayMessage('Invalid input. Please check all fields.', true);
+            return;
+        }
+
+        const url = id ? `http://localhost:3000/employees/${id}` : 'http://localhost:3000/employees';
+        const method = id ? 'PUT' : 'POST';
+
+        const requestBody = { name, position, salary };
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        })
+            .then(response => response.json())
+            .then(() => {
+                employeeId.value = '';
+                employeeName.value = '';
+                employeePosition.value = '';
+                employeeSalary.value = '';
+                fetchEmployees();
+                displayMessage('Employee saved successfully.');
+            })
+            .catch(err => displayMessage('Failed to save employee.', true));
+    });
+
+    // Edit Employee
+    function editEmployee(id) {
+        fetch(`http://localhost:3000/employees/${id}`)
+            .then(response => response.json())
+            .then(employee => {
+                employeeId.value = employee.id;
+                employeeName.value = employee.name;
+                employeePosition.value = employee.position;
+                employeeSalary.value = employee.salary;
+            })
+            .catch(err => displayMessage('Failed to load employee details.', true));
+    }
+
+    // Delete Employee
+    function deleteEmployee(id) {
+        fetch(`http://localhost:3000/employees/${id}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(() => {
+                fetchEmployees();
+                displayMessage('Employee deleted successfully.');
+            })
+            .catch(err => displayMessage('Failed to delete employee.', true));
+    }
+
+    // Initialize by fetching all employees
+    fetchEmployees();
+</script>
+</body>
+</html>
